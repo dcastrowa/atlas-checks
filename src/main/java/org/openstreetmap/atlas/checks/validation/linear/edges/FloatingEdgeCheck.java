@@ -109,7 +109,12 @@ public class FloatingEdgeCheck extends BaseCheck<Long>
         // Consider navigable master edges
         return TypePredicates.IS_EDGE.test(object) && ((Edge) object).isMasterEdge()
                 && HighwayTag.isCarNavigableHighway(object) && isMinimumHighwayType(object)
-                && !intersectsAirport((Edge) object);
+                && !intersectsAirport((Edge) object)
+                && ((Edge) object).connectedNodes().stream().noneMatch(
+                node -> node.getAtlas()
+                        .linesContaining(node.getLocation(), line -> Validators.isOfType(line,
+                                HighwayTag.class, HighwayTag.CONSTRUCTION))
+                        .iterator().hasNext());
     }
 
     /**
