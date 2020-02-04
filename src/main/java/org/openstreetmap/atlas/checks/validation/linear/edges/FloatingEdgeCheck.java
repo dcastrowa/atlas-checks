@@ -13,6 +13,7 @@ import org.openstreetmap.atlas.geography.atlas.items.Edge;
 import org.openstreetmap.atlas.geography.atlas.items.ItemType;
 import org.openstreetmap.atlas.tags.AerowayTag;
 import org.openstreetmap.atlas.tags.HighwayTag;
+import org.openstreetmap.atlas.tags.filters.TaggableFilter;
 import org.openstreetmap.atlas.tags.SyntheticBoundaryNodeTag;
 import org.openstreetmap.atlas.tags.annotations.validation.Validators;
 import org.openstreetmap.atlas.utilities.configuration.Configuration;
@@ -43,11 +44,13 @@ public class FloatingEdgeCheck extends BaseCheck<Long>
     private static final long serialVersionUID = -6867668561001117411L;
     // The default value for the minimum highway type
     private static final String HIGHWAY_MINIMUM_DEFAULT = HighwayTag.SERVICE.toString();
+    private static final String CONSTRUCTION_HIGHWAY_DEFAULT = "!highway->construction";
     // class variable to store the maximum distance for the floating road
     private final Distance maximumDistance;
     // class variable to store the minimum distance for the floating road
     private final Distance minimumDistance;
     private final HighwayTag highwayMinimum;
+    private final TaggableFilter constructionTagFilter;
 
     /**
      * Checks if the {@link Edge} intersects with/is within an airport.
@@ -89,6 +92,8 @@ public class FloatingEdgeCheck extends BaseCheck<Long>
         final String highwayType = this.configurationValue(configuration, "highway.minimum",
                 HIGHWAY_MINIMUM_DEFAULT);
         this.highwayMinimum = Enum.valueOf(HighwayTag.class, highwayType.toUpperCase());
+        this.constructionTagFilter = this.configurationValue(configuration,"tag.filter",
+                CONSTRUCTION_HIGHWAY_DEFAULT, TaggableFilter::forDefinition);
     }
 
     /**
@@ -112,8 +117,7 @@ public class FloatingEdgeCheck extends BaseCheck<Long>
                 && !intersectsAirport((Edge) object)
                 && ((Edge) object).connectedNodes().stream().noneMatch(
                 node -> node.getAtlas()
-                        .linesContaining(node.getLocation(), line -> Validators.isOfType(line,
-                                HighwayTag.class, HighwayTag.CONSTRUCTION))
+                        .linesContaining(node.getLocation(), line -> this.constructionTagFilter.test(line))
                         .iterator().hasNext());
     }
 
