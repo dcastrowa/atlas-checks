@@ -4,7 +4,7 @@
       "org.openstreetmap.atlas.checks.validation"
     ],
     "type": "org.openstreetmap.atlas.checks.base.BaseCheck",
-    "enabled.value.default": true
+    "enabled.value.default": false
   },
   "PoolSizeCheck": {
     "surface": {
@@ -231,6 +231,8 @@
     }
   },
   "FloatingEdgeCheck": {
+    "enabled": true,
+    "tag.filter": "highway->!construction",
     "highway.minimum": "service",
     "length": {
       "maximum.kilometers": 100.0,

@@ -3,7 +3,9 @@ package org.openstreetmap.atlas.checks.validation.linear.edges;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import java.util.Collections;
 
 import org.openstreetmap.atlas.checks.atlas.predicates.TypePredicates;
 import org.openstreetmap.atlas.checks.base.BaseCheck;
@@ -44,13 +46,14 @@ public class FloatingEdgeCheck extends BaseCheck<Long>
     private static final long serialVersionUID = -6867668561001117411L;
     // The default value for the minimum highway type
     private static final String HIGHWAY_MINIMUM_DEFAULT = HighwayTag.SERVICE.toString();
-    private static final String CONSTRUCTION_HIGHWAY_DEFAULT = "!highway->construction";
     // class variable to store the maximum distance for the floating road
     private final Distance maximumDistance;
     // class variable to store the minimum distance for the floating road
     private final Distance minimumDistance;
     private final HighwayTag highwayMinimum;
-    private final TaggableFilter constructionTagFilter;
+
+    private static final List<String> CONSTRUCTION_FILTER = Collections.singletonList("highway->construction");
+    private List<TaggableFilter> constructionFilter;
 
     /**
      * Checks if the {@link Edge} intersects with/is within an airport.
@@ -92,8 +95,8 @@ public class FloatingEdgeCheck extends BaseCheck<Long>
         final String highwayType = this.configurationValue(configuration, "highway.minimum",
                 HIGHWAY_MINIMUM_DEFAULT);
         this.highwayMinimum = Enum.valueOf(HighwayTag.class, highwayType.toUpperCase());
-        this.constructionTagFilter = this.configurationValue(configuration,"tag.filter",
-                CONSTRUCTION_HIGHWAY_DEFAULT, TaggableFilter::forDefinition);
+        final List<String> filterStrings = configurationValue(configuration, "tag.filter", CONSTRUCTION_FILTER);
+        this.constructionFilter = filterStrings.stream().map(TaggableFilter::forDefinition).collect(Collectors.toList());
     }
 
     /**
@@ -114,11 +117,8 @@ public class FloatingEdgeCheck extends BaseCheck<Long>
         // Consider navigable master edges
         return TypePredicates.IS_EDGE.test(object) && ((Edge) object).isMasterEdge()
                 && HighwayTag.isCarNavigableHighway(object) && isMinimumHighwayType(object)
-                && !intersectsAirport((Edge) object)
-                && ((Edge) object).connectedNodes().stream().noneMatch(
-                node -> node.getAtlas()
-                        .linesContaining(node.getLocation(), line -> this.constructionTagFilter.test(line))
-                        .iterator().hasNext());
+                && !intersectsAirport((Edge) object);
+//                && this.constructionFilter.stream().allMatch(filter -> filter.test(object));
     }
 
     /**
