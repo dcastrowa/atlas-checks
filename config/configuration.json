@@ -232,7 +232,7 @@
   },
   "FloatingEdgeCheck": {
     "enabled": true,
-    "tag.filter": "highway->!construction",
+    "tag.filters": "highway->construction",
     "highway.minimum": "service",
     "length": {
       "maximum.kilometers": 100.0,

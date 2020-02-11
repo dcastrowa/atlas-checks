@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-import java.util.Collections;
 
 import org.openstreetmap.atlas.checks.atlas.predicates.TypePredicates;
 import org.openstreetmap.atlas.checks.base.BaseCheck;
@@ -15,9 +14,9 @@ import org.openstreetmap.atlas.geography.atlas.items.Edge;
 import org.openstreetmap.atlas.geography.atlas.items.ItemType;
 import org.openstreetmap.atlas.tags.AerowayTag;
 import org.openstreetmap.atlas.tags.HighwayTag;
-import org.openstreetmap.atlas.tags.filters.TaggableFilter;
 import org.openstreetmap.atlas.tags.SyntheticBoundaryNodeTag;
 import org.openstreetmap.atlas.tags.annotations.validation.Validators;
+import org.openstreetmap.atlas.tags.filters.TaggableFilter;
 import org.openstreetmap.atlas.utilities.configuration.Configuration;
 import org.openstreetmap.atlas.utilities.scalars.Distance;
 
@@ -52,8 +51,8 @@ public class FloatingEdgeCheck extends BaseCheck<Long>
     private final Distance minimumDistance;
     private final HighwayTag highwayMinimum;
 
-    private static final List<String> CONSTRUCTION_FILTER = Collections.singletonList("highway->construction");
-    private List<TaggableFilter> constructionFilter;
+    private static final String CONSTRUCTION_FILTER = "highway->construction";
+    private TaggableFilter constructionFilter;
 
     /**
      * Checks if the {@link Edge} intersects with/is within an airport.
@@ -95,8 +94,8 @@ public class FloatingEdgeCheck extends BaseCheck<Long>
         final String highwayType = this.configurationValue(configuration, "highway.minimum",
                 HIGHWAY_MINIMUM_DEFAULT);
         this.highwayMinimum = Enum.valueOf(HighwayTag.class, highwayType.toUpperCase());
-        final List<String> filterStrings = configurationValue(configuration, "tag.filter", CONSTRUCTION_FILTER);
-        this.constructionFilter = filterStrings.stream().map(TaggableFilter::forDefinition).collect(Collectors.toList());
+        final String filterStrings = configurationValue(configuration, "tags.filter", CONSTRUCTION_FILTER);
+        this.constructionFilter = TaggableFilter.forDefinition(filterStrings);
     }
 
     /**
@@ -117,8 +116,8 @@ public class FloatingEdgeCheck extends BaseCheck<Long>
         // Consider navigable master edges
         return TypePredicates.IS_EDGE.test(object) && ((Edge) object).isMasterEdge()
                 && HighwayTag.isCarNavigableHighway(object) && isMinimumHighwayType(object)
-                && !intersectsAirport((Edge) object);
-//                && this.constructionFilter.stream().allMatch(filter -> filter.test(object));
+                && !intersectsAirport((Edge) object)
+                && this.constructionFilter.test(object);
     }
 
     /**
