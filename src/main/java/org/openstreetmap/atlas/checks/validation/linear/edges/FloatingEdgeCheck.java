@@ -3,7 +3,6 @@ package org.openstreetmap.atlas.checks.validation.linear.edges;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.openstreetmap.atlas.checks.atlas.predicates.TypePredicates;
@@ -16,7 +15,6 @@ import org.openstreetmap.atlas.tags.AerowayTag;
 import org.openstreetmap.atlas.tags.HighwayTag;
 import org.openstreetmap.atlas.tags.SyntheticBoundaryNodeTag;
 import org.openstreetmap.atlas.tags.annotations.validation.Validators;
-import org.openstreetmap.atlas.tags.filters.TaggableFilter;
 import org.openstreetmap.atlas.utilities.configuration.Configuration;
 import org.openstreetmap.atlas.utilities.scalars.Distance;
 
@@ -50,9 +48,8 @@ public class FloatingEdgeCheck extends BaseCheck<Long>
     // class variable to store the minimum distance for the floating road
     private final Distance minimumDistance;
     private final HighwayTag highwayMinimum;
-
-    private static final String CONSTRUCTION_FILTER = "highway->construction";
-    private TaggableFilter constructionFilter;
+    // check if floating edge is connected to construction road
+    private final boolean checkConstructionRoad;
 
     /**
      * Checks if the {@link Edge} intersects with/is within an airport.
@@ -94,8 +91,7 @@ public class FloatingEdgeCheck extends BaseCheck<Long>
         final String highwayType = this.configurationValue(configuration, "highway.minimum",
                 HIGHWAY_MINIMUM_DEFAULT);
         this.highwayMinimum = Enum.valueOf(HighwayTag.class, highwayType.toUpperCase());
-        final String filterStrings = configurationValue(configuration, "tags.filter", CONSTRUCTION_FILTER);
-        this.constructionFilter = TaggableFilter.forDefinition(filterStrings);
+        this.checkConstructionRoad = configurationValue(configuration, "construction.check", false);
     }
 
     /**
@@ -114,10 +110,19 @@ public class FloatingEdgeCheck extends BaseCheck<Long>
     public boolean validCheckForObject(final AtlasObject object)
     {
         // Consider navigable master edges
+        if (this.checkConstructionRoad) {
+            return TypePredicates.IS_EDGE.test(object) && ((Edge) object).isMasterEdge()
+                    && HighwayTag.isCarNavigableHighway(object) && isMinimumHighwayType(object)
+                    && !intersectsAirport((Edge) object)
+                    && ((Edge) object).connectedNodes().stream().noneMatch(
+                    node -> node.getAtlas()
+                            .linesContaining(node.getLocation(), line -> Validators.isOfType(line,
+                                    HighwayTag.class, HighwayTag.CONSTRUCTION))
+                            .iterator().hasNext());
+        }
         return TypePredicates.IS_EDGE.test(object) && ((Edge) object).isMasterEdge()
                 && HighwayTag.isCarNavigableHighway(object) && isMinimumHighwayType(object)
-                && !intersectsAirport((Edge) object)
-                && this.constructionFilter.test(object);
+                && !intersectsAirport((Edge) object);
     }
 
     /**
